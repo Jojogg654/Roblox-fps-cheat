@@ -1,0 +1,140 @@
+-- Define the maximum distance to consider for finding the closest player
+local maxDistance = 50 -- Adjust as needed
+
+-- Function to find the closest player within the specified distance
+local function findClosestPlayer()
+    local closestPlayer = nil
+    local closestDistance = math.huge -- Initialize with a very large number
+
+    for _, player in ipairs(game.Players:GetPlayers()) do
+        -- Ensure the player is not yourself and their character exists
+        if player ~= game.Players.LocalPlayer and player.Character then
+            local distance = (player.Character.Head.Position - game.Players.LocalPlayer.Character.Head.Position).magnitude
+            if distance < closestDistance and distance <= maxDistance then
+                closestPlayer = player
+                closestDistance = distance
+            end
+        end
+    end
+
+    return closestPlayer
+end
+
+-- Function to make the character's head stare at the closest player
+local function stareAtClosestPlayer()
+    local closestPlayer = findClosestPlayer()
+
+    if closestPlayer then
+        local targetHead = closestPlayer.Character:FindFirstChild("Head")
+        local ownHead = game.Players.LocalPlayer.Character:FindFirstChild("Head")
+
+        -- Check if both heads exist
+        if targetHead and ownHead then
+            -- Calculate the direction from own head to target head
+            local direction = (targetHead.Position - ownHead.Position).unit
+
+            -- Calculate the rotation to look towards the target head
+            local rotation = CFrame.new(ownHead.Position, ownHead.Position + direction)
+
+            -- Apply the rotation to the own head
+            ownHead.CFrame = rotation
+        end
+    end
+end
+
+-- Update the staring behavior periodically
+while true do
+    stareAtClosestPlayer()
+    wait(0.1) -- Adjust the interval as needed for smoothness and performance
+end
+
+-- Function to create a name tag for a player
+local function createNameTag(player)
+    local nameTag = Instance.new("BillboardGui")
+    nameTag.Name = "NameTag"
+    nameTag.Adornee = player.Character.Head
+    nameTag.Size = UDim2.new(0, 100, 0, 20) -- Adjust the size of the name tag
+    nameTag.StudsOffset = Vector3.new(0, 2, 0) -- Adjust the vertical offset above the head
+    nameTag.AlwaysOnTop = true
+    nameTag.Parent = player.Character.Head
+
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Size = UDim2.new(1, 0, 1, 0)
+    nameLabel.TextScaled = true
+    nameLabel.TextColor3 = Color3.new(1, 1, 1) -- Adjust text color as needed
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.Text = player.Name
+    nameLabel.Parent = nameTag
+end
+
+-- Function to update the name tags for all players
+local function updateNameTags()
+    for _, player in ipairs(game.Players:GetPlayers()) do
+        if player.Character then
+            local nameTag = player.Character:FindFirstChild("NameTag")
+            if not nameTag then
+                createNameTag(player)
+            end
+        end
+    end
+end
+
+-- Connect the function to update the name tags
+game.Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function(character)
+        wait(1) -- Wait for the character to load completely
+        updateNameTags()
+    end)
+end)
+
+-- Call the function initially to set up the name tags
+updateNameTags()
+
+-- Define the players you want to connect
+local player1 = game.Players["Player1"] -- Change "Player1" to the name of the first player
+local player2 = game.Players["Player2"] -- Change "Player2" to the name of the second player
+
+-- Define the visual line object
+local line = Instance.new("Part")
+line.Anchored = true
+line.Size = Vector3.new(0.1, 0.1, 0) -- Adjust the size of the line as needed
+line.Color = Color3.new(1, 0, 0) -- Adjust the color of the line as needed
+line.Material = Enum.Material.Neon -- Adjust the material of the line as needed
+line.Parent = game.Workspace
+
+-- Function to update the position and size of the line to connect two players
+local function updateLine()
+    if player1.Character and player2.Character then
+        local position1 = player1.Character.HumanoidRootPart.Position
+        local position2 = player2.Character.HumanoidRootPart.Position
+        local direction = position2 - position1
+        local midpoint = (position1 + position2) / 2
+        line.Position = midpoint
+        line.Size = Vector3.new(0.1, 0.1, direction.magnitude) -- Adjust the size of the line to match the distance between the players
+        line.CFrame = CFrame.new(midpoint, position2)
+    end
+end
+
+-- Connect the function to update the line position
+game:GetService("RunService").Stepped:Connect(updateLine)
+
+-- Call the function initially to set up the line
+updateLine()
+
+local detectionLabel = script.Parent:WaitForChild("DetectionLabel")
+
+-- Function to check if the detection string matches a player's name
+local function checkForPlayer()
+    local playerNameToDetect = detectionLabel.Text
+    for _, player in ipairs(game.Players:GetPlayers()) do
+        if player.Name == playerNameToDetect then
+            print("Player '" .. playerNameToDetect .. "' detected!")
+            -- Add any actions you want to take when the player is detected
+            return
+        end
+    end
+    print("No player found with the name '" .. playerNameToDetect .. "'.")
+end
+
+-- Connect the function to the TextLabel's Changed event
+detectionLabel:GetPropertyChangedSignal("Text"):Connect(checkForPlayer)
